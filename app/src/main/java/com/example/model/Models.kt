@@ -166,3 +166,43 @@ data class HashResult(
     val fileSize: Long,
     val calculationTimeMs: Long
 )
+
+enum class ActiveScreen {
+    EXPLORER,
+    TEXT_EDITOR,
+    HEX_VIEWER,
+    DIFF_VIEWER,
+    IMAGE_VIEWER,
+    VIDEO_PLAYER,
+    AUDIO_PLAYER,
+    PDF_VIEWER
+}
+
+data class ImageViewerState(
+    val file: File,
+    val title: String = file.name,
+    val rotationAngle: Float = 0f,
+    val isGrayscale: Boolean = false,
+    val width: Int = 0,
+    val height: Int = 0,
+    val mimeType: String = "image/*"
+)
+
+data class VideoPlayerState(
+    val file: File,
+    val title: String = file.name,
+    val isPlaying: Boolean = true,
+    val currentPositionMs: Int = 0,
+    val durationMs: Int = 0,
+    val playbackSpeed: Float = 1.0f,
+    val isLooping: Boolean = false,
+    val isMuted: Boolean = false,
+    val isFullscreen: Boolean = false
+)
+
+data class PdfViewerState(
+    val file: File,
+    val title: String = file.name,
+    val currentPage: Int = 0,
+    val totalPages: Int = 0
+)

@@ -187,6 +187,7 @@ fun FileItemRow(
     onCalculateHash: () -> Unit,
     onRename: () -> Unit,
     onShowProperties: () -> Unit,
+    onOpenMedia: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -326,6 +327,22 @@ fun FileItemRow(
                     }
 
                     if (!item.isDirectory) {
+                        if (item.fileType in listOf(FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT)) {
+                            DropdownMenuItem(
+                                text = {
+                                    val label = when (item.fileType) {
+                                        FileType.IMAGE -> "🖼 Open in Photo Viewer"
+                                        FileType.VIDEO -> "🎬 Play in Video Player"
+                                        FileType.AUDIO -> "🎵 Play in Music Player"
+                                        FileType.DOCUMENT -> "📄 Open in PDF / Reader"
+                                        else -> "▶ Open in Player"
+                                    }
+                                    Text(label)
+                                },
+                                onClick = { showMenu = false; onOpenMedia() }
+                            )
+                        }
+
                         DropdownMenuItem(
                             text = { Text("📝 Text / Code Editor") },
                             onClick = { showMenu = false; onOpenTextEditor() }

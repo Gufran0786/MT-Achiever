@@ -7,14 +7,22 @@ import com.example.engine.ApkEngine
 import com.example.engine.ArchiveEngine
 import com.example.engine.DiffEngine
 import com.example.engine.FileEngine
+import com.example.engine.MediaPlayerEngine
+import com.example.engine.PermissionStatus
+import com.example.engine.RootShizukuEngine
+import com.example.model.ActiveScreen
 import com.example.model.ApkInfo
 import com.example.model.BookmarkItem
 import com.example.model.CompressionOptions
 import com.example.model.FileDiffLine
 import com.example.model.FileItem
+import com.example.model.FileType
 import com.example.model.HashResult
+import com.example.model.ImageViewerState
 import com.example.model.InstalledAppItem
+import com.example.model.PdfViewerState
 import com.example.model.SortMode
+import com.example.model.VideoPlayerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,13 +41,6 @@ data class PaneState(
     val showHidden: Boolean = false,
     val isLoading: Boolean = false
 )
-
-enum class ActiveScreen {
-    EXPLORER,
-    TEXT_EDITOR,
-    HEX_VIEWER,
-    DIFF_VIEWER
-}
 
 data class MTZUiState(
     val activeScreen: ActiveScreen = ActiveScreen.EXPLORER,
@@ -81,6 +82,8 @@ data class MTZUiState(
     val searchQuery: String = "",
     val searchResults: List<FileItem> = emptyList(),
     val isSearching: Boolean = false,
+    val showRootShizukuDialog: Boolean = false,
+    val permissionStatus: PermissionStatus = PermissionStatus(),
 
     // Text Editor State
     val editorFile: File? = null,
@@ -98,7 +101,12 @@ data class MTZUiState(
     // Diff Viewer State
     val diffFileA: File? = null,
     val diffFileB: File? = null,
-    val diffLines: List<FileDiffLine> = emptyList()
+    val diffLines: List<FileDiffLine> = emptyList(),
+
+    // Media & Document Viewers
+    val imageViewerState: ImageViewerState? = null,
+    val videoPlayerState: VideoPlayerState? = null,
+    val pdfViewerState: PdfViewerState? = null
 )
 
 class MTZViewModel(application: Application) : AndroidViewModel(application) {
@@ -120,13 +128,17 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
             MTZUiState(
                 paneLeft = PaneState(currentPath = initialLeft),
                 paneRight = PaneState(currentPath = initialRight),
+                permissionStatus = RootShizukuEngine.getPermissionStatus(application),
                 bookmarks = listOf(
-                    BookmarkItem("MTZ Workspace", workspace.absolutePath, "CODE"),
                     BookmarkItem("Internal Storage", defaultRoot.absolutePath, "STORAGE"),
+                    BookmarkItem("Android/data", File(defaultRoot, "Android/data").absolutePath, "ANDROID"),
+                    BookmarkItem("Android/obb", File(defaultRoot, "Android/obb").absolutePath, "GAME"),
+                    BookmarkItem("Root Filesystem", "/", "ROOT"),
+                    BookmarkItem("MTZ Workspace", workspace.absolutePath, "CODE"),
                     BookmarkItem("Downloads", File(defaultRoot, "Download").absolutePath, "DOWNLOAD"),
                     BookmarkItem("DCIM (Camera)", File(defaultRoot, "DCIM").absolutePath, "CAMERA"),
-                    BookmarkItem("Android/data", File(defaultRoot, "Android/data").absolutePath, "ANDROID"),
-                    BookmarkItem("App Internal Files", application.filesDir.absolutePath, "FOLDER")
+                    BookmarkItem("Music", File(defaultRoot, "Music").absolutePath, "AUDIO"),
+                    BookmarkItem("Movies / Video", File(defaultRoot, "Movies").absolutePath, "VIDEO")
                 )
             )
         )
@@ -135,10 +147,16 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
             FileEngine.setupSampleWorkspace(getApplication())
             refreshPane(0)
             refreshPane(1)
+            checkPermissions()
         }
     }
 
     val uiState: StateFlow<MTZUiState> = _uiState.asStateFlow()
+
+    fun checkPermissions() {
+        val status = RootShizukuEngine.getPermissionStatus(getApplication())
+        _uiState.update { it.copy(permissionStatus = status) }
+    }
 
     fun toggleDualPaneMode() {
         _uiState.update { it.copy(isDualPaneMode = !it.isDualPaneMode) }
@@ -149,7 +167,9 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun navigateTo(paneIndex: Int, newPath: File) {
-        if (!newPath.exists()) return
+        val isRootOrProtected = newPath.absolutePath == "/" || newPath.absolutePath.contains("Android/data") || newPath.absolutePath.contains("Android/obb")
+        if (!newPath.exists() && !isRootOrProtected) return
+
         updatePane(paneIndex) {
             it.copy(
                 currentPath = newPath,
@@ -186,7 +206,7 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
             }
         } else {
             val parent = pane.currentPath.parentFile
-            if (parent != null && parent.canRead()) {
+            if (parent != null) {
                 navigateTo(paneIndex, parent)
             }
         }
@@ -249,6 +269,7 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 FileEngine.getDirectoryContents(
                     dir = pane.currentPath,
+                    context = getApplication(),
                     showHidden = pane.showHidden,
                     sortMode = pane.sortMode
                 )
@@ -261,6 +282,7 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshBothPanes() {
         refreshPane(0)
         refreshPane(1)
+        checkPermissions()
     }
 
     // Cross-Pane Actions (MT Manager Power Duality)
@@ -575,6 +597,76 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Universal Open Any File (Auto-Detects Player & Viewer)
+    fun openAnyFile(fileItem: FileItem) {
+        if (fileItem.isDirectory) {
+            val activePane = getActivePane()
+            if (activePane.isInsideArchive && activePane.archiveFile != null) {
+                enterArchive(_uiState.value.activePaneIndex, activePane.archiveFile, fileItem.virtualEntryPath)
+            } else {
+                navigateTo(_uiState.value.activePaneIndex, fileItem.file)
+            }
+            return
+        }
+
+        when (fileItem.fileType) {
+            FileType.IMAGE -> openInImageViewer(fileItem)
+            FileType.VIDEO -> openInVideoPlayer(fileItem)
+            FileType.AUDIO -> openInAudioPlayer(fileItem)
+            FileType.DOCUMENT -> {
+                if (fileItem.file.extension.equals("pdf", ignoreCase = true)) {
+                    openInPdfViewer(fileItem)
+                } else {
+                    openInTextEditor(fileItem)
+                }
+            }
+            FileType.APK -> analyzeApk(fileItem.file)
+            FileType.ARCHIVE -> enterArchive(_uiState.value.activePaneIndex, fileItem.file)
+            FileType.CODE, FileType.TEXT -> openInTextEditor(fileItem)
+            FileType.DEX, FileType.BINARY -> openInHexViewer(fileItem)
+            else -> openInTextEditor(fileItem)
+        }
+    }
+
+    // Built-in Multimedia Viewers
+    fun openInImageViewer(fileItem: FileItem) {
+        _uiState.update {
+            it.copy(
+                activeScreen = ActiveScreen.IMAGE_VIEWER,
+                imageViewerState = ImageViewerState(file = fileItem.file, title = fileItem.name)
+            )
+        }
+    }
+
+    fun openInVideoPlayer(fileItem: FileItem) {
+        _uiState.update {
+            it.copy(
+                activeScreen = ActiveScreen.VIDEO_PLAYER,
+                videoPlayerState = VideoPlayerState(file = fileItem.file, title = fileItem.name)
+            )
+        }
+    }
+
+    fun openInAudioPlayer(fileItem: FileItem) {
+        MediaPlayerEngine.playAudio(getApplication(), fileItem.file)
+        _uiState.update {
+            it.copy(activeScreen = ActiveScreen.AUDIO_PLAYER)
+        }
+    }
+
+    fun expandAudioPlayer() {
+        _uiState.update { it.copy(activeScreen = ActiveScreen.AUDIO_PLAYER) }
+    }
+
+    fun openInPdfViewer(fileItem: FileItem) {
+        _uiState.update {
+            it.copy(
+                activeScreen = ActiveScreen.PDF_VIEWER,
+                pdfViewerState = PdfViewerState(file = fileItem.file, title = fileItem.name)
+            )
+        }
+    }
+
     // Text & Code Editor
     fun openInTextEditor(fileItem: FileItem) {
         viewModelScope.launch {
@@ -709,6 +801,7 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
     fun showStorageAnalyzerSheet(show: Boolean) = _uiState.update { it.copy(showStorageAnalyzerSheet = show) }
     fun showFilePropertiesDialog(fileItem: FileItem?) = _uiState.update { it.copy(showFilePropertiesDialog = fileItem != null, targetFileForProperties = fileItem) }
     fun showSearchDialog(show: Boolean) = _uiState.update { it.copy(showSearchDialog = show, searchResults = emptyList()) }
+    fun showRootShizukuDialog(show: Boolean) = _uiState.update { it.copy(showRootShizukuDialog = show) }
 
     fun showMessage(msg: String) {
         _uiState.update { it.copy(statusMessage = msg) }
@@ -731,3 +824,4 @@ class MTZViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 }
+

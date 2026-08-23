@@ -28,17 +28,31 @@ object FileEngine {
 
     suspend fun getDirectoryContents(
         dir: File,
+        context: Context? = null,
         showHidden: Boolean = false,
         sortMode: SortMode = SortMode.NAME_ASC
     ): List<FileItem> = withContext(Dispatchers.IO) {
-        if (!dir.exists() || !dir.isDirectory) return@withContext emptyList()
-        val files = dir.listFiles() ?: return@withContext emptyList()
+        val path = dir.absolutePath
+        val isProtected = path.contains("Android/data") || path.contains("Android/obb") || path.startsWith("/data") || path == "/"
 
-        val filtered = files.filter {
-            if (showHidden) true else !it.name.startsWith(".")
+        var items = if (isProtected && context != null) {
+            RootShizukuEngine.listProtectedDirectory(context, dir)
+        } else {
+            emptyList()
         }
 
-        val items = filtered.map { FileItem(it) }
+        if (items.isEmpty()) {
+            if (!dir.exists() || !dir.isDirectory) return@withContext emptyList()
+            val files = dir.listFiles() ?: emptyArray()
+            val filtered = files.filter {
+                if (showHidden) true else !it.name.startsWith(".")
+            }
+            items = filtered.map { FileItem(it) }
+        } else {
+            if (!showHidden) {
+                items = items.filter { !it.name.startsWith(".") }
+            }
+        }
 
         return@withContext items.sortedWith { a, b ->
             if (a.isDirectory != b.isDirectory) {

@@ -30,6 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.ActiveScreen
+import com.example.ui.components.MiniPlayerBar
 import com.example.ui.dialogs.ApkAnalyzerDialog
 import com.example.ui.dialogs.BatchRenameDialog
 import com.example.ui.dialogs.CompressDialog
@@ -38,16 +40,20 @@ import com.example.ui.dialogs.ExtractDialog
 import com.example.ui.dialogs.FilePropertiesDialog
 import com.example.ui.dialogs.HashCalculatorDialog
 import com.example.ui.dialogs.InstalledAppsSheet
+import com.example.ui.dialogs.RootShizukuDialog
 import com.example.ui.dialogs.SearchFilesDialog
 import com.example.ui.dialogs.SimpleInputDialog
 import com.example.ui.dialogs.StorageAnalyzerSheet
 import com.example.ui.dialogs.TestArchiveDialog
+import com.example.ui.screens.AudioPlayerScreen
 import com.example.ui.screens.DualPaneFileExplorer
 import com.example.ui.screens.FileDiffScreen
 import com.example.ui.screens.HexViewerScreen
+import com.example.ui.screens.ImageViewerScreen
+import com.example.ui.screens.PdfDocumentViewerScreen
 import com.example.ui.screens.TextEditorScreen
+import com.example.ui.screens.VideoPlayerScreen
 import com.example.ui.theme.MTCyan
-import com.example.viewmodel.ActiveScreen
 import com.example.viewmodel.MTZViewModel
 
 @Composable
@@ -76,11 +82,58 @@ fun MTZMainScreen(
         ) {
             when (uiState.activeScreen) {
                 ActiveScreen.EXPLORER -> {
-                    DualPaneFileExplorer(
-                        uiState = uiState,
-                        viewModel = viewModel,
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        DualPaneFileExplorer(
+                            uiState = uiState,
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Floating Audio Mini-Player Bar
+                        MiniPlayerBar(
+                            onExpand = { viewModel.expandAudioPlayer() },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 56.dp)
+                        )
+                    }
+                }
+
+                ActiveScreen.IMAGE_VIEWER -> {
+                    uiState.imageViewerState?.let { imgState ->
+                        ImageViewerScreen(
+                            state = imgState,
+                            onClose = { viewModel.closeActiveTool() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                ActiveScreen.VIDEO_PLAYER -> {
+                    uiState.videoPlayerState?.let { vidState ->
+                        VideoPlayerScreen(
+                            state = vidState,
+                            onClose = { viewModel.closeActiveTool() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                ActiveScreen.AUDIO_PLAYER -> {
+                    AudioPlayerScreen(
+                        onClose = { viewModel.closeActiveTool() },
                         modifier = Modifier.fillMaxSize()
                     )
+                }
+
+                ActiveScreen.PDF_VIEWER -> {
+                    uiState.pdfViewerState?.let { pdfState ->
+                        PdfDocumentViewerScreen(
+                            state = pdfState,
+                            onClose = { viewModel.closeActiveTool() },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 ActiveScreen.TEXT_EDITOR -> {
@@ -301,9 +354,18 @@ fun MTZMainScreen(
                     } else if (fileItem.isArchive) {
                         viewModel.enterArchive(uiState.activePaneIndex, fileItem.file)
                     } else {
-                        viewModel.openInTextEditor(fileItem)
+                        viewModel.openAnyFile(fileItem)
                     }
                 }
+            )
+        }
+
+        if (uiState.showRootShizukuDialog) {
+            RootShizukuDialog(
+                status = uiState.permissionStatus,
+                onRequestRoot = { viewModel.checkPermissions() },
+                onRequestSaf = { _ -> viewModel.checkPermissions() },
+                onDismiss = { viewModel.showRootShizukuDialog(false) }
             )
         }
     }

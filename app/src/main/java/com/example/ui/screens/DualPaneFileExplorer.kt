@@ -82,6 +82,7 @@ import com.example.model.FileType
 import com.example.model.SortMode
 import com.example.ui.components.BreadcrumbBar
 import com.example.ui.components.FileItemRow
+import com.example.ui.components.StorageCardsCarousel
 import com.example.ui.theme.MTCyan
 import com.example.ui.theme.ZAGold
 import com.example.viewmodel.MTZUiState
@@ -104,13 +105,13 @@ fun DualPaneFileExplorer(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF0D1117))
     ) {
         // Quick Header / App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 3.dp
+            color = Color(0xFF161B22),
+            tonalElevation = 4.dp
         ) {
             Row(
                 modifier = Modifier
@@ -122,8 +123,8 @@ fun DualPaneFileExplorer(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
                             .background(MTCyan.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -131,14 +132,14 @@ fun DualPaneFileExplorer(
                             text = "MT",
                             fontWeight = FontWeight.Black,
                             color = MTCyan,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
                             .background(ZAGold.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -146,7 +147,7 @@ fun DualPaneFileExplorer(
                             text = "Z",
                             fontWeight = FontWeight.Black,
                             color = ZAGold,
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -155,60 +156,115 @@ fun DualPaneFileExplorer(
                             text = "MT Z-Manager",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color.White
                         )
-                        Text(
-                            text = if (uiState.isDualPaneMode) "Dual-Pane Mode" else "Single-Pane Mode",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (uiState.isDualPaneMode) "Dual-Pane" else "Single-Pane",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF8B949E)
+                            )
+                        }
                     }
                 }
 
-                // Quick Header Actions
+                // Quick Header Actions (Root/Shizuku, Search, App Manager, Dual/Single Toggle, More Menu)
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Root & Shizuku Status Shield Chip
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { viewModel.showRootShizukuDialog(true) },
+                        color = when {
+                            uiState.permissionStatus.hasRootAccess -> Color(0xFF00E676).copy(alpha = 0.2f)
+                            uiState.permissionStatus.hasShizukuAccess -> Color(0xFF00F0FF).copy(alpha = 0.2f)
+                            uiState.permissionStatus.hasDataSafGranted -> Color(0xFFFFD000).copy(alpha = 0.2f)
+                            else -> Color(0xFF30363D)
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            uiState.permissionStatus.hasRootAccess -> Color(0xFF00E676)
+                                            uiState.permissionStatus.hasShizukuAccess -> Color(0xFF00F0FF)
+                                            uiState.permissionStatus.hasDataSafGranted -> Color(0xFFFFD000)
+                                            else -> Color(0xFF8B949E)
+                                        }
+                                    )
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = when {
+                                    uiState.permissionStatus.hasRootAccess -> "ROOT"
+                                    uiState.permissionStatus.hasShizukuAccess -> "SHIZUKU"
+                                    uiState.permissionStatus.hasDataSafGranted -> "SAF DATA"
+                                    else -> "STORAGE"
+                                },
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    uiState.permissionStatus.hasRootAccess -> Color(0xFF00E676)
+                                    uiState.permissionStatus.hasShizukuAccess -> Color(0xFF00F0FF)
+                                    uiState.permissionStatus.hasDataSafGranted -> Color(0xFFFFD000)
+                                    else -> Color(0xFF8B949E)
+                                }
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick = { viewModel.showSearchDialog(true) },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     IconButton(
                         onClick = { viewModel.loadInstalledApps() },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Android,
                             contentDescription = "App Manager",
-                            tint = MaterialTheme.colorScheme.tertiary
+                            tint = Color(0xFF00E676),
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     IconButton(
                         onClick = { viewModel.toggleDualPaneMode() },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = if (uiState.isDualPaneMode) Icons.Default.ViewColumn else Icons.Default.ViewAgenda,
                             contentDescription = "Toggle Layout",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MTCyan,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     Box {
                         IconButton(
                             onClick = { showMoreMenu = true },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More Tools",
-                                tint = MaterialTheme.colorScheme.onSurface
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
@@ -226,6 +282,13 @@ fun DualPaneFileExplorer(
                                     } else {
                                         viewModel.showMessage("Select an APK file to sign.")
                                     }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("🛡 Root & Shizuku Terminal") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    viewModel.showRootShizukuDialog(true)
                                 }
                             )
                             DropdownMenuItem(
@@ -282,6 +345,15 @@ fun DualPaneFileExplorer(
                 }
             }
         }
+
+        // Storage Drives Quick-Access Carousel
+        StorageCardsCarousel(
+            defaultStorage = File("/storage/emulated/0"),
+            workspace = File(activePane.currentPath.parentFile ?: activePane.currentPath, "MTZ_Workspace"),
+            onSelectDrive = { drivePath ->
+                viewModel.navigateTo(activePaneIndex, drivePath)
+            }
+        )
 
         // Quick Bookmark Storage Shortcuts
         ScrollableTabRow(
@@ -729,15 +801,9 @@ fun SinglePaneView(
                                 } else if (item.isArchive) {
                                     // Open archive directly as virtual folder (ZArchiver core feature!)
                                     viewModel.enterArchive(paneIndex, item.file)
-                                } else if (item.fileType == FileType.APK) {
-                                    // MT Manager core: open APK analyzer
-                                    viewModel.analyzeApk(item.file)
-                                } else if (item.fileType in listOf(FileType.CODE, FileType.TEXT)) {
-                                    viewModel.openInTextEditor(item)
-                                } else if (item.fileType in listOf(FileType.DEX, FileType.BINARY)) {
-                                    viewModel.openInHexViewer(item)
                                 } else {
-                                    viewModel.openInTextEditor(item)
+                                    // Unified media, editor, hex, and APK viewer engine
+                                    viewModel.openAnyFile(item)
                                 }
                             }
                         },
@@ -755,7 +821,8 @@ fun SinglePaneView(
                         onTestArchive = { viewModel.testArchive(item.file) },
                         onCalculateHash = { viewModel.calculateHash(item) },
                         onRename = { viewModel.showRenameDialog(item) },
-                        onShowProperties = { viewModel.showFilePropertiesDialog(item) }
+                        onShowProperties = { viewModel.showFilePropertiesDialog(item) },
+                        onOpenMedia = { viewModel.openAnyFile(item) }
                     )
                 }
             }
