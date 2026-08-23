@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Left Pane Folder (MT Style) -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M28,34 L40,34 L45,39 L52,39 C54.2,39 56,40.8 56,43 L56,70 C56,72.2 54.2,74 52,74 L28,74 C25.8,74 24,72.2 24,70 L24,38 C24,35.8 25.8,34 28,34 Z" />
+    <!-- Right Pane Folder (ZArchiver Style) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M56,38 L68,38 L73,43 L80,43 C82.2,43 84,44.8 84,47 L84,74 C84,76.2 82.2,78 80,78 L56,78 C53.8,78 52,76.2 52,74 L52,42 C52,39.8 53.8,38 56,38 Z" />
+    <!-- Zipper Teeth in Center -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,44 L54,44 L54,47 L50,47 Z
+                         M52,49 L56,49 L56,52 L52,52 Z
+                         M50,54 L54,54 L54,57 L50,57 Z
+                         M52,59 L56,59 L56,62 L52,62 Z
+                         M50,64 L54,64 L54,67 L50,67 Z" />
+    <!-- Zipper Pull / Lock Badge -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M48,68 L58,68 L55,77 L51,77 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M53,71 C53.6,71 54,71.4 54,72 C54,72.6 53.6,73 53,73 C52.4,73 52,72.6 52,72 C52,71.4 52.4,71 53,71 Z" />
+</vector>

@@ -1,0 +1,6 @@
+{
+  "name": "MT Z-Manager",
+  "description": "All-in-one powerful Dual-Pane File Manager, Archive Tool & APK Analyzer combining MT Manager and ZArchiver features.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
